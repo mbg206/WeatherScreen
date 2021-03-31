@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WeatherScreen</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
+<link rel="shortcut icon" type="image/png" href="icon.png">
+<style>
+body {
+  background-image: url("https://upload.wikimedia.org/wikipedia/commons/a/aa/Blue-skies-cumulus-clouds.jpg");
+  background-size:100% 100%;
+  backdrop-filter: blur(10px);
+  font-family: 'Montserrat', sans-serif;
+  height: 100vh;
+  width: 100vw;
+  margin: 0px;
+  overflow: hidden;
+  color: white;
+}
+body, input, button {font-size: 32px;}
+input {width: 64px;}
+#content {
+  background-color:rgba(0,0,0,0.3);
+  margin: 32px;
+  padding: 16px;
+  height: calc(100vh - 96px);
+}
+</style>
+</head>
+<body onload="load()">
+<div id="content">
+<label for="station">Station:</label>
+<input type="text" id="station"><br>
+<label for="gridx">Gridpoint X:</label>
+<input type="text" id="gridx"><br>
+<label for="gridy">Gridpoint Y:</label>
+<input type="text" id="gridy"><br>
+<button type="button" onclick="autoLocation()">Auto Detect</button>
+<button type="button" onclick="start()">Start</button>
+</div>
+<script>
+var e, forecast, hourly;
+
+//Loading and station input
+function load() {e = document.getElementById("content");}
+function autoLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(getStation, error);
+  } else {
+    alert("Auto Location is not supported by this browser.");
+  }
+}
+function error() {alert("An error occured trying to get your location.");}
+function getStation(position) {
+  fetch('https://api.weather.gov/points/' + position.coords.latitude + ',' + position.coords.longitude)
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById("station").value = data.properties.gridId;
+      document.getElementById("gridx").value = data.properties.gridX;
+      document.getElementById("gridy").value = data.properties.gridY;
+    })
+}
+function start() {
+  fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value)
+    .then(response => {
+      if (response.ok) {
+        weatherLoop(true);
+        echo("Loading weather data...");
+      }
+      else {alert("Invalid station or error connecting!");}
+    })
+}
+
+//Weather Fetch Loop
+async function weatherLoop(first) {
+  await fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value + '/forecast')
+    .then(response => response.json())
+    .then(data => {forecast = data;})
+  await fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value + '/forecast/hourly')
+    .then(response => response.json())
+    .then(data => {hourly = data;})
+  if (first) {currentConditions();}
+  setTimeout(weatherLoop, 600000, false);
+}
+
+//Screens
+async function currentConditions() {
+  cls();
+  echo("Current Conditions-");
+  echo(hourly.properties.periods[0].shortForecast);
+  echo("Temperature: " + hourly.properties.periods[0].temperature + "°" + hourly.properties.periods[0].temperatureUnit);
+  echo("Wind Speed: " + hourly.properties.periods[0].windSpeed + " " + hourly.properties.periods[0].windDirection);
+  await sleep(6000);
+  hourlyForecast();
+}
+
+async function hourlyForecast() {
+  for (var i = 1; i < 10; i++) {
+    cls();
+    echo("Conditions in " + i + " hours-");
+    echo(hourly.properties.periods[i].shortForecast);
+    echo("Temperature: " + hourly.properties.periods[i].temperature + "°" + hourly.properties.periods[i].temperatureUnit);
+    echo("Wind Speed: " + hourly.properties.periods[i].windSpeed + " " + hourly.properties.periods[i].windDirection);
+    await sleep(2000);
+  }
+  await sleep(3000);
+  currentConditions();
+}
+
+//Utils
+function echo(text) {
+  var t = document.createTextNode(text);
+  var br = document.createElement("br");
+  e.appendChild(t);
+  e.appendChild(br);
+}
+function cls() {
+  e.textContent = '';
+}
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
+</body>
+</html>
