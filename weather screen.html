@@ -38,7 +38,7 @@ input {width: 64px;}
 <button type="button" onclick="start()">Start</button>
 </div>
 <script>
-var e, forecast, hourly;
+var e, current, forecast, hourly;
 
 //Loading and station input
 function load() {e = document.getElementById("content");}
@@ -72,6 +72,9 @@ function start() {
 
 //Weather Fetch Loop
 async function weatherLoop(first) {
+  await fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value)
+    .then(response => response.json())
+    .then(data => {current = data;})
   await fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value + '/forecast')
     .then(response => response.json())
     .then(data => {forecast = data;})
@@ -92,9 +95,8 @@ async function currentConditions() {
   await sleep(6000);
   hourlyForecast();
 }
-
 async function hourlyForecast() {
-  for (var i = 1; i < 10; i++) {
+  for (var i = 1; i < 9; i++) {
     cls();
     echo("Conditions in " + i + " hours-");
     echo(hourly.properties.periods[i].shortForecast);
@@ -103,6 +105,19 @@ async function hourlyForecast() {
     await sleep(2000);
   }
   await sleep(3000);
+  dailyForecast();
+}
+async function dailyForecast() {
+  for (var i = 1; i < 8; i++) {
+    cls();
+    echo("Conditions " + forecast.properties.periods[i].name + " -");
+    echo(forecast.properties.periods[i].shortForecast);
+    echo("Temperature: " + forecast.properties.periods[i].temperature + "°" + hourly.properties.periods[i].temperatureUnit);
+    echo("Wind Speed: " + forecast.properties.periods[i].windSpeed + " " + forecast.properties.periods[i].windDirection);
+    echo("");
+    echo("Details: " + forecast.properties.periods[i].detailedForecast);
+    await sleep(10000);
+  }
   currentConditions();
 }
 
