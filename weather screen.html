@@ -17,12 +17,19 @@ body {
   color: white;
 }
 body, input, button {font-size: 32px;}
-input {width: 64px;}
+input {width: 128px;}
 #content {
-  background-color:rgba(0,0,0,0.3);
+  background-color: rgba(0,0,0,0.3);
   margin: 32px;
   padding: 16px;
   height: calc(100vh - 96px);
+}
+#radarImg {
+  position: absolute;
+  right: 32px;
+  top: 0px;
+  height: calc(100vh - 64px);
+  width: calc(100vh - 64px);
 }
 </style>
 </head>
@@ -34,11 +41,13 @@ input {width: 64px;}
 <input type="text" id="gridx"><br>
 <label for="gridy">Gridpoint Y:</label>
 <input type="text" id="gridy"><br>
+<label for="radar">Radar:</label>
+<input type="text" id="radar"><br>
 <button type="button" onclick="autoLocation()">Auto Detect</button>
 <button type="button" onclick="start()">Start</button>
 </div>
 <script>
-var e, current, forecast, hourly;
+var e, current, forecast, hourly, gridX, gridY, gridId, radar;
 
 //Loading and station input
 function load() {e = document.getElementById("content");}
@@ -57,12 +66,17 @@ function getStation(position) {
       document.getElementById("station").value = data.properties.gridId;
       document.getElementById("gridx").value = data.properties.gridX;
       document.getElementById("gridy").value = data.properties.gridY;
+      document.getElementById("radar").value = data.properties.radarStation;
     })
 }
 function start() {
   fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value)
     .then(response => {
       if (response.ok) {
+        gridX = document.getElementById('gridx').value;
+        gridY = document.getElementById('gridy').value;
+        gridId = document.getElementById('station').value;
+        radar = document.getElementById('radar').value;
         weatherLoop(true);
         echo("Loading weather data...");
       }
@@ -72,13 +86,13 @@ function start() {
 
 //Weather Fetch Loop
 async function weatherLoop(first) {
-  await fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value)
+  await fetch('https://api.weather.gov/gridpoints/' + gridId + '/' + gridX + ',' + gridY)
     .then(response => response.json())
     .then(data => {current = data;})
-  await fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value + '/forecast')
+  await fetch('https://api.weather.gov/gridpoints/' + gridId + '/' + gridX + ',' + gridY + '/forecast')
     .then(response => response.json())
     .then(data => {forecast = data;})
-  await fetch('https://api.weather.gov/gridpoints/' + document.getElementById('station').value + '/' + document.getElementById('gridx').value + ',' + document.getElementById('gridy').value + '/forecast/hourly')
+  await fetch('https://api.weather.gov/gridpoints/' + gridId + '/' + gridX + ',' + gridY + '/forecast/hourly')
     .then(response => response.json())
     .then(data => {hourly = data;})
   if (first) {currentConditions();}
@@ -118,6 +132,16 @@ async function dailyForecast() {
     echo("Details: " + forecast.properties.periods[i].detailedForecast);
     await sleep(10000);
   }
+  radarScreen();
+}
+async function radarScreen() {
+  cls();
+  var img = document.createElement('img');
+  img.src = 'https://radar.weather.gov/ridge/lite/' + radar + '_loop.gif';
+  img.id = 'radarImg';
+  echo("Radar-");
+  document.getElementById('content').appendChild(img);
+  await sleep(10000);
   currentConditions();
 }
 
